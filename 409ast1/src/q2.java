@@ -1,10 +1,20 @@
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * We can change the tree depth from the static final variable below.
+ * The algorithm as a tendency to reduce the size of the tree even if
+ * there is more chance of creating a node than deleting at each iteration.
+ * This is because when we delete a note, we delete a whole subtree.
+ * Moreover, the check for deletion is made before
+ * @author Anthony
+ *
+ */
 public class q2 {
 	public static final float maxNodeValue = 100f;
 	public static final float minNodeValue = 0f;
-	public static final long threadsRunTime = 1000;
+	public static final long threadsRunTime = 5000;
+	public static final int treeDepth = 6; //+1, root is depth 0
 	public static Node root;
 	public static Random rnd = new Random();
 	
@@ -21,41 +31,34 @@ public class q2 {
 		
 		//Start 2 readers thread
 		TreeReader2 reader1 = new TreeReader2();
-		//TreeReader reader2 = new TreeReader();
+		TreeReader2 reader2 = new TreeReader2();
 		Thread readerThread1 = new Thread(reader1);
-		//Thread readerThread2 = new Thread(reader2);
-		//Thread writerThread = new Thread(new TreeWriter());
+		Thread readerThread2 = new Thread(reader2);
+		Thread writerThread = new Thread(new TreeWriter());
 		
 		readerThread1.start();
-		//readerThread2.start();
-		//writerThread.start();
+		readerThread2.start();
+		writerThread.start();
 		
 		//Start writer thread -> should join with the two reading thread and output their string
 
 		
 		try {
-			System.out.println("ii");
-
 			readerThread1.join();
-			System.out.println("yy");
-
-			//readerThread2.join();
-			//writerThread.join();
-			System.out.println("tt");
-
+			readerThread2.join();
+			writerThread.join();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 		
 		System.out.println("Thead A: ");
 		System.out.println(reader1.getString());
-		//System.out.println("Thead B: ");
-		//System.out.println(reader2.getString());
+		System.out.println("Thead B: ");
+		System.out.println(reader2.getString());
 		
 	}
 	
 	static class TreeConstructor implements Runnable{
-		static final int treeDepth = 4; //+1, root is depth 0
 		@Override
 		public void run() {
 			root = new Node((maxNodeValue-minNodeValue)/2+minNodeValue);	//50
@@ -147,20 +150,21 @@ public class q2 {
 			while(System.currentTimeMillis()-startTime < threadsRunTime) {	//This may exceed 5 sec but it should not matter too much, we will terminate after the current tree traversal
 				Node currentNode = root;
 				Node lastNode = null;
+                Node temp = null;
+
 				//This algorithm to read a binary tree was taken from https://stackoverflow.com/questions/10371848/how-to-do-in-order-traversal-of-a-bst-without-recursion-or-stack-but-using-paren
 				while (currentNode != null)
 			    {
-					
+					temp = null;
 			        if (lastNode == currentNode.parent.get())
 			        {
 		                lastNode = currentNode;
-		                
-			            if (currentNode.left.get() != null)
+			            if ((temp = currentNode.left.get()) != null)
 			            {
-			                currentNode = currentNode.left.get();
-			            }else if(currentNode.right.get() != null){
+			                currentNode = temp;
+			            }else if((temp = currentNode.right.get()) != null){
 			            	record+=" "+currentNode.value;
-			            	currentNode = currentNode.right.get();
+			            	currentNode = temp;
 			            }else {		//We reached a leaf, go up
 			            	record+=" "+currentNode.value;
 			            	currentNode = currentNode.parent.get();
@@ -168,7 +172,7 @@ public class q2 {
 			        }else if(lastNode.value < currentNode.value) {	//We are coming back from our left child
 		                lastNode = currentNode;
 		            	record+=" "+currentNode.value;
-			        	if(currentNode.right != null) { //Go to right child
+			        	if((temp = currentNode.right.get()) != null) { //Go to right child
 			        		currentNode = currentNode.right.get();
 			        	}else { //Go up
 			            	currentNode = currentNode.parent.get();
@@ -207,9 +211,9 @@ public class q2 {
 		
 		void randomAction(Node currentNode, float min, float max) {
 			//Randomly delete left node
-			if(currentNode.left.get() != null) {	// this should be atomic
+			if(currentNode.left.get() != null) {	//The get and set are not atomic but it does not matter for the reader threads
 				if(rnd.nextFloat() < 0.1f) {
-					System.out.println("1");
+					//System.out.println("Deleted Node");
 					currentNode.left.set(null);
 					trySleep(rnd.nextInt(5)+1);
 					return;
@@ -217,8 +221,7 @@ public class q2 {
 			}else {
 				//Add a node to the left
 				if(rnd.nextFloat() < 0.4f) {
-					System.out.println("2");
-
+					//System.out.println("Added node");
 					Node newNode = new Node(rnd.nextFloat()*(currentNode.value-min)+min);
 					newNode.parent.set(currentNode);
 					currentNode.left.set(newNode);
@@ -227,10 +230,9 @@ public class q2 {
 				}
 			}
 			//Randomly delete right node
-			if(currentNode.right.get() != null) {	//TODO this should be atomic
+			if(currentNode.right.get() != null) {
 				if(rnd.nextFloat() < 0.1f) {
-					System.out.println("3");
-
+					//System.out.println("Deleted Node");
 					currentNode.right.set(null);
 					trySleep(rnd.nextInt(5)+1);
 					return;
@@ -238,8 +240,7 @@ public class q2 {
 			}else {
 				//Add a node to the right
 				if(rnd.nextFloat() < 0.4f) {
-					System.out.println("4");
-
+					//System.out.println("Added node");
 					Node newNode = new Node(rnd.nextFloat()*(max-currentNode.value)+currentNode.value);
 					newNode.parent.set(currentNode);
 					currentNode.right.set(newNode);
@@ -248,22 +249,17 @@ public class q2 {
 				}
 			}
 			if(currentNode.left.get() != null && rnd.nextFloat() < 0.5f) {
-				System.out.println("5");
 
 				randomAction(currentNode.left.get(),min,currentNode.value);
 			}else if(currentNode.right.get() != null) {
-				System.out.println("6");
-
 				randomAction(currentNode.right.get(),currentNode.value,max);
 			}
 			//If we reach here we are on a leaf and were not able to create or delete anything. Do nothing, just restart from the outer loop
-			System.out.println("11111111111");
-
 		}
 		
 	}
 	
-	
+	//HELPERS
 	static float getRandomBetween(float min, float max) {
 		return rnd.nextFloat()*(max-min)+min;
 	}
@@ -283,7 +279,11 @@ public class q2 {
 }
 
 
-
+/**
+ * The references are atomic such that we dont get corrupted references from multithreading
+ * @author Anthony
+ *
+ */
 class Node {
     float value;
     AtomicReference<Node> parent;
