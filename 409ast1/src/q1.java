@@ -120,10 +120,10 @@ public class q1 {
 		    	
 		    	CircleInfo ci = new CircleInfo(xp, yp, radius);
 		    	while(!canWrite(ci)) {
-		    		System.out.println("ID "+id);
+		    		//System.out.println("ID "+id);
 		    		Thread.yield();
 		    	}
-		    	System.out.println("out");
+		    	//System.out.println("out");
 		    	
 		    	for(int xc=-radius; xc<radius; xc++) {
 		    		for(int yc = (int) -Math.sqrt(Math.pow(radius,2)-Math.pow(xc, 2)); yc < (int) Math.sqrt(Math.pow(radius,2)-Math.pow(xc, 2)); yc++) {
@@ -137,13 +137,9 @@ public class q1 {
 		    		}
 		    	}
 			}
-			try {
-				Thread.sleep(50);
-			} catch (InterruptedException e) {
-
-			}finally{
-				otherCircle[id]=null;
-			}
+			//Synchronously set our ID to null in the array
+			canWrite(null);
+			
 		}
 		
 		/**
@@ -151,13 +147,16 @@ public class q1 {
 		 * @param ci
 		 * @return true if we can write the circle without concurrency issues
 		 */
-		synchronized boolean canWrite(CircleInfo ci) {
-	    	otherCircle[id] = null;	//Notify volatile var that we are done
-			if( otherCircle[1-id] == null || !otherCircle[1-id].intersect(ci)) {
-				otherCircle[id] = ci;
-				return true;
+		boolean canWrite(CircleInfo ci) {
+			synchronized(otherCircle) {
+				otherCircle[id] = null;	//Notify volatile var that we are done
+		    	if(ci == null)return false;
+				if( otherCircle[1-id] == null || !otherCircle[1-id].intersect(ci)) {
+					otherCircle[id] = ci;
+					return true;
+				}
+				return false;
 			}
-			return false;
 		}
 		
 		private PainterConcurrent init(int threadID) {
