@@ -79,33 +79,6 @@ public class q1 {
         
        
     }
-    /*
-    public static class Painter implements Runnable{
-
-		@Override
-		public void run() {
-			while(counter.getAndIncrement()<c) {
-				
-				int radius = rnd.nextInt(r-r/minRadiusFrac)+r/minRadiusFrac;
-		    	int color = (rnd.nextInt() & 0x00FFFFFF)+0xFF000000;
-		    	int xp = rnd.nextInt(width);
-		    	int yp = rnd.nextInt(height);
-		    	
-		    	for(int xc=-radius; xc<radius; xc++) {
-		    		for(int yc = (int) -Math.sqrt(Math.pow(radius,2)-Math.pow(xc, 2)); yc < (int) Math.sqrt(Math.pow(radius,2)-Math.pow(xc, 2)); yc++) {
-		    			try {
-		    				img.setRGB(((xp+xc)%width+width) % width,((yp+yc)%height + height)% height,color);	//Weird syntax to make modulo of negatives actually wrap around
-		    			}catch(java.lang.ArrayIndexOutOfBoundsException e) {
-		    				System.out.println("Before: "+(xp+xc)+" ,  "+(yp+yc));
-		    				System.out.println("After: "+(xp+xc)%width+" ,  "+(yp+yc)%height);
-		    				return;
-		    			}
-		    		}
-		    	}
-			}
-		}
-    	
-    }*/
     
     public static class PainterConcurrent implements Runnable{
     	int id;
@@ -148,6 +121,7 @@ public class q1 {
 		 * @return true if we can write the circle without concurrency issues
 		 */
 		boolean canWrite(CircleInfo ci) {
+			//This is the only way to read or write to otherCircle array. Since we synchronize the object, there will be no concurrent access
 			synchronized(otherCircle) {
 				otherCircle[id] = null;	//Notify volatile var that we are done
 		    	if(ci == null)return false;
